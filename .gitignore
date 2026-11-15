@@ -1,0 +1,25 @@
+# Rust build artifacts
+/target/
+**/target/
+*.rs.bk
+
+# Local runtime state of the CLI/UI (account store, launch state)
+/.rerust-pcl/
+*.local.json
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# macOS packaging output
+/dist/
+
+# Upstream's own CI workflow is kept on disk as reference but not
+# tracked: pushing any workflow file requires the `workflow` OAuth
+# scope, which the current gh token does not have. Same reason the
+# repo's own .github/workflows/build.yml is pending a re-push after
+# `gh auth refresh -s workflow`.
+/.github/workflows/
+/upstream/.github/workflows/

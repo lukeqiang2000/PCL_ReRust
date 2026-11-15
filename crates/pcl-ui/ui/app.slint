@@ -1,0 +1,392 @@
+// ReRust_PCL 主窗口（M3 第一批）
+// 布局复刻 PCL 原版 FormMain 的组织方式：
+//   顶部 48px 蓝色标题栏（左 Logo、中部一级导航 启动/下载/联机/设置/更多、右最小化/关闭）
+//   内容区按页切换；启动页 = 左侧 300px 启动列（当前实例 / 登录 / 大启动按钮 / 版本选择）
+//                         + 右侧实例列表与日志。
+// 原版图标素材不复制（许可），导航仅用文字。主色取原版主题蓝：
+//   标题栏 #4890f5、强调 #1370f3、深蓝 #0b5bcb、页底 #eaf2fe。
+
+import { ListView, LineEdit } from "std-widgets.slint";
+
+export struct InstanceItem {
+    name: string,
+    detail: string,
+}
+
+component NavButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    callback clicked();
+    width: 66px;
+    height: 30px;
+    border-radius: 4px;
+    background: selected ? #ffffff : transparent;
+    Text {
+        text: root.text;
+        color: selected ? #0b5bcb : #ffffff;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.clicked(); } }
+}
+
+component TitleBarButton inherits Rectangle {
+    in property <string> text;
+    callback clicked();
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: #00000000;
+    Text {
+        text: root.text;
+        color: #ffffff;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.clicked(); } }
+}
+
+component SideButton inherits Rectangle {
+    in property <string> text;
+    callback clicked();
+    height: 35px;
+    border-radius: 5px;
+    background: #d5e6fd;
+    Text {
+        text: root.text;
+        color: #0b5bcb;
+        font-size: 13px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.clicked(); } }
+}
+
+component LoginTypeButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    callback clicked();
+    height: 30px;
+    border-radius: 13px;
+    background: selected ? #1370f3 : #e0eafd;
+    Text {
+        text: root.text;
+        color: selected ? #ffffff : #343d4a;
+        font-size: 13px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.clicked(); } }
+}
+
+export component AppWindow inherits Window {
+    title: "PCL ReRust";
+    preferred-width: 850px;
+    preferred-height: 500px;
+    min-width: 810px;
+    min-height: 470px;
+    background: #eaf2fe;
+
+    in-out property <int> page: 0;
+    in-out property <[InstanceItem]> instances;
+    in-out property <int> selected-instance: -1;
+    // 0 = 离线，1 = 正版，2 = 统一通行证（本批仅离线接通）
+    in-out property <int> login-type: 0;
+    in-out property <string> player-name: "Steve";
+    in-out property <string> mc-dir-label: "";
+    in-out property <string> status-line: "就绪";
+    in-out property <[string]> log-lines;
+
+    callback refresh-instances();
+    callback launch-clicked();
+    callback quit-app();
+    callback minimize-app();
+    callback placeholder(string);
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // ---- 标题栏（原版 PanTitle，48px，蓝色） ----
+        Rectangle {
+            height: 48px;
+            background: #4890f5;
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 12px;
+                spacing: 6px;
+                Text {
+                    text: "PCL";
+                    color: #ffffff;
+                    font-size: 17px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                NavButton {
+                    text: "启动";
+                    selected: root.page == 0;
+                    clicked => { root.page = 0; }
+                }
+                NavButton {
+                    text: "下载";
+                    selected: root.page == 1;
+                    clicked => { root.page = 1; }
+                }
+                NavButton {
+                    text: "联机";
+                    selected: root.page == 2;
+                    clicked => { root.page = 2; }
+                }
+                NavButton {
+                    text: "设置";
+                    selected: root.page == 3;
+                    clicked => { root.page = 3; }
+                }
+                NavButton {
+                    text: "更多";
+                    selected: root.page == 4;
+                    clicked => { root.page = 4; }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                TitleBarButton {
+                    text: "—";
+                    clicked => { root.minimize-app(); }
+                }
+                TitleBarButton {
+                    text: "✕";
+                    clicked => { root.quit-app(); }
+                }
+            }
+        }
+
+        // ---- 启动页 ----
+        if root.page == 0 : HorizontalLayout {
+            spacing: 0px;
+
+            // 左侧启动列（原版 PageLaunchLeft，300px）
+            Rectangle {
+                width: 300px;
+                background: #ffffff;
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 10px;
+                    Text {
+                        text: "当前实例";
+                        color: #8a94a6;
+                        font-size: 12px;
+                    }
+                    Text {
+                        text: root.selected-instance >= 0 && root.selected-instance < root.instances.length
+                            ? root.instances[root.selected-instance].name
+                            : "未选择实例";
+                        color: #343d4a;
+                        font-size: 15px;
+                        font-weight: 700;
+                    }
+                    Rectangle { height: 6px; }
+                    Text {
+                        text: "登录方式";
+                        color: #8a94a6;
+                        font-size: 12px;
+                    }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        LoginTypeButton {
+                            text: "正版";
+                            selected: root.login-type == 1;
+                            clicked => {
+                                root.login-type = 1;
+                                root.placeholder("正版登录（微软）将在后续批次接入，本批请使用离线登录");
+                            }
+                        }
+                        LoginTypeButton {
+                            text: "离线";
+                            selected: root.login-type == 0;
+                            clicked => { root.login-type = 0; }
+                        }
+                        LoginTypeButton {
+                            text: "统一通行证";
+                            selected: root.login-type == 2;
+                            clicked => {
+                                root.login-type = 2;
+                                root.placeholder("统一通行证登录将在后续批次接入，本批请使用离线登录");
+                            }
+                        }
+                    }
+                    if root.login-type == 0 : LineEdit {
+                        text <=> root.player-name;
+                        placeholder-text: "玩家名（离线）";
+                    }
+                    if root.login-type != 0 : Text {
+                        text: "该登录方式尚未接入，请切换到「离线」。";
+                        color: #c0392b;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                    Rectangle { vertical-stretch: 1; }
+                    // 大启动按钮（原版 BtnLaunch，高 54px，强调蓝）
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 6px;
+                        background: #1370f3;
+                        Text {
+                            text: "启动游戏";
+                            color: #ffffff;
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        TouchArea { clicked => { root.launch-clicked(); } }
+                    }
+                    Text {
+                        text: root.selected-instance >= 0 && root.selected-instance < root.instances.length
+                            ? root.instances[root.selected-instance].detail
+                            : "正在加载版本列表，请稍候";
+                        color: #8a94a6;
+                        font-size: 11px;
+                        horizontal-alignment: center;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        SideButton {
+                            text: "版本选择";
+                            clicked => { root.refresh-instances(); }
+                        }
+                        SideButton {
+                            text: "版本设置";
+                            clicked => { root.placeholder("版本设置页将在后续批次复刻"); }
+                        }
+                    }
+                }
+            }
+
+            // 右侧：实例列表 + 启动日志（原版 PageLaunchRight 的日志区扩展）
+            VerticalLayout {
+                padding: 12px;
+                spacing: 8px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: "实例 / 版本";
+                        color: #343d4a;
+                        font-size: 14px;
+                        font-weight: 700;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Text {
+                        text: root.mc-dir-label;
+                        color: #8a94a6;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                    SideButton {
+                        width: 64px;
+                        text: "刷新";
+                        clicked => { root.refresh-instances(); }
+                    }
+                }
+                ListView {
+                    vertical-stretch: 1;
+                    for item[idx] in root.instances : Rectangle {
+                        height: 46px;
+                        border-radius: 5px;
+                        background: idx == root.selected-instance ? #d5e6fd : #ffffff;
+                        VerticalLayout {
+                            padding-left: 10px;
+                            padding-top: 5px;
+                            spacing: 1px;
+                            Text {
+                                text: item.name;
+                                color: #343d4a;
+                                font-size: 13px;
+                                font-weight: 700;
+                            }
+                            Text {
+                                text: item.detail;
+                                color: #8a94a6;
+                                font-size: 11px;
+                            }
+                        }
+                        TouchArea { clicked => { root.selected-instance = idx; } }
+                    }
+                }
+                Text {
+                    text: "启动日志";
+                    color: #343d4a;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+                ListView {
+                    height: 150px;
+                    for line in root.log-lines : Text {
+                        text: line;
+                        color: #343d4a;
+                        font-size: 12px;
+                    }
+                }
+                Text {
+                    text: root.status-line;
+                    color: #0b5bcb;
+                    font-size: 12px;
+                }
+            }
+        }
+
+        // ---- 下载页（占位，后续批次复刻 PageDownload） ----
+        if root.page == 1 : VerticalLayout {
+            padding: 24px;
+            spacing: 8px;
+            Text { text: "下载"; color: #343d4a; font-size: 18px; font-weight: 700; }
+            Text {
+                text: "游戏版本、整合包、Mod、资源包、地图的下载页将在后续批次复刻（原版 PageDownload）。\n当前可先用 pcl-cli 的 versions / install 子命令完成下载。";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+        }
+
+        // ---- 联机页（占位，后续批次复刻 PageLink） ----
+        if root.page == 2 : VerticalLayout {
+            padding: 24px;
+            spacing: 8px;
+            Text { text: "联机"; color: #343d4a; font-size: 18px; font-weight: 700; }
+            Text {
+                text: "联机大厅（原版 PageLink）将在后续批次复刻。";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+        }
+
+        // ---- 设置页（占位，后续批次复刻 PageSetup） ----
+        if root.page == 3 : VerticalLayout {
+            padding: 24px;
+            spacing: 8px;
+            Text { text: "设置"; color: #343d4a; font-size: 18px; font-weight: 700; }
+            Text {
+                text: "启动、个性化、联机与系统设置（原版 PageSetup 的四个子页）将在后续批次复刻。";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+        }
+
+        // ---- 更多 / 关于页 ----
+        if root.page == 4 : VerticalLayout {
+            padding: 24px;
+            spacing: 10px;
+            Text { text: "更多"; color: #343d4a; font-size: 18px; font-weight: 700; }
+            Text {
+                text: "帮助、百宝箱等页面（原版 PageOther）将在后续批次复刻。";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+            Rectangle { height: 8px; }
+            Text { text: "关于"; color: #343d4a; font-size: 16px; font-weight: 700; }
+            Text {
+                text: "原作作者：龙腾猫跃（Meloong）—— Plain Craft Launcher（PCL）的作者。\n赞助 PCL：https://meloong.com/afd/a/LTCat";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+            Text {
+                text: "本程序名为 PCL ReRust，是基于 PCL 的第三方独立二次创作（工程/仓库名 PCL_ReRust）。本程序与 Meloong 官方无关，源代码将按 PCL 分发有限许可公开。启动流程包含与原版 McLaunchPrecheck 一致的正版购买劝导与赞助劝导。";
+                color: #343d4a; font-size: 13px; wrap: word-wrap;
+            }
+        }
+    }
+}

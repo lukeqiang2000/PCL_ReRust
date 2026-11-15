@@ -1,0 +1,29 @@
+[package]
+name = "pcl-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "PCL (Plain Craft Launcher) core logic ported to Rust — phase 1 sample: Minecraft version JSON model and PCL version-name semantics."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+regex = "1"
+# M2: hashes (FileChecker), natives zip extraction.
+digest = "0.10"
+sha1 = "0.10"
+sha2 = "0.10"
+md-5 = "0.10"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# M2: HTTP (ModNet). The TLS backend is split per target: Windows
+# uses the OS stack (native-tls/schannel, like PCL's .NET client);
+# other platforms use rustls with the OS certificate store, whose
+# connector always offers ALPN — some egress proxies black-hole
+# ClientHellos without ALPN, and reqwest's native-tls connector
+# never sends it.
+[target.'cfg(target_os = "windows")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "native-tls", "gzip"] }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-native-roots", "gzip"] }
