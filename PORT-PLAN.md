@@ -199,3 +199,7 @@ ReRust_PCL 必须同时支持 Windows、macOS、Linux 三大系统，以下约�
 3. **unsafe 收敛**：平台 FFI 只能出现在独立平台子模块内（如 `pathutil::win32`），单个函数一个边界、失败回退原行为，核心其余部分保持 safe。
 4. **验证口径**：VM（Linux）上 `cargo build` / `cargo test` 必须全绿；Windows 分支用 `cargo check --target x86_64-pc-windows-msvc` 做类型检查验证（已配好 target），运行验证需真实 Windows 机器；macOS 的编译与签名在 Linux VM 上做不了，后续需 Mac 或 CI 的 macOS runner（待安排，在此之前 macOS 分支只保证源码层 cfg 结构与可注入点齐全，不宣称已验证）。
 5. **UI 层**：M3 用 Slint（原生渲染、不用 WebView、三大系统支持）；其授权与 PCL 分发许可的兼容在公开发布前复核。
+
+### M3 第一批进展（2026-11-15，Slint GUI 骨架）
+
+详见 `M3-batch1-REPORT.md`。要点：新建 `crates/pcl-ui`（Slint 1.18，无 WebView）——主窗口按原版 FormMain 组织（48px 蓝色标题栏＋一级导航 启动/下载/联机/设置/更多＋启动页左 300px 启动列/右实例列表与日志），窗口标题与显示名按用户定为「PCL ReRust」，工程/仓库名 PCL_ReRust；实例扫描已接 `scan_instances`，启动按钮已接通 precheck→离线登录→继承/库/natives→Java 需求与发现→参数拼装→`runner::spawn_game` 全链（Spawner 抽象＋端到端单测）；下载/联机/设置/更多为占位，关于区已预埋龙腾猫跃首位署名。验证：`cargo test --workspace` 100/100；Linux release 真二进制（pcl-ui 33,808,032 B）；Windows cargo-xwin release 真 exe（pcl-ui.exe 16,526,848 B）；macOS `cargo check --target x86_64-apple-darwin` 卡在依赖 ring 的 C 构建脚本（需 Apple 目标 C 工具链/macOS SDK，本 VM 无 clang/osxcross），属环境卡点，真实构建待 macos runner 或 Mac 上 `build-macos.sh`。代码已推 GitHub 公开仓 `lukeqiang2000/PCL_ReRust`；Actions 工作流因 gh OAuth 令牌缺 `workflow` 权限范围未能推送（文件留本地，upstream 自带 workflow 同因未纳入），待用户 `gh auth refresh -h github.com -s workflow` 后补推。
