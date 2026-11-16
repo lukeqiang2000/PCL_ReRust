@@ -1,0 +1,63 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux GUI system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libgl1-mesa-dev libfontconfig1-dev
+
+      - name: Build (release, whole workspace)
+        run: cargo build --release --workspace
+
+      - name: Test (whole workspace)
+        run: cargo test --workspace
+
+      - name: Assemble macOS .app bundle
+        if: runner.os == 'macOS'
+        run: ./build-macos.sh
+
+      - name: Upload Windows binaries
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCL_ReRust-windows
+          path: |
+            target/release/pcl-ui.exe
+            target/release/pcl-cli.exe
+
+      - name: Upload Linux binaries
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCL_ReRust-linux
+          path: |
+            target/release/pcl-ui
+            target/release/pcl-cli
+
+      - name: Upload macOS app bundle
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCL_ReRust-macos
+          path: dist/PCL_ReRust.app
